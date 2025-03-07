@@ -1,82 +1,66 @@
 import * as XLSX from "xlsx";
-import { join } from "path";
-
-interface Transaction {
-  id: string;
-  date: Date;
-  amount: number;
-  category: string;
-  description: string;
-  type: string;
-}
-
-interface AlertSettings {
-  balanceAlerts: {
-    yellow: number;
-    orange: number;
-    red: number;
-  };
-  categoryAlerts: Array<{
-    category: string;
-    limit: number;
-  }>;
-}
-
-interface AppData {
-  balance: number;
-  transactions: Transaction[];
-  alertSettings: AlertSettings;
-}
 
 const EXCEL_FILE = "financial_data.xlsx";
 
-export const saveToExcel = (data: AppData) => {
-  const workbook = XLSX.utils.book_new();
+interface BalanceData {
+  balance: number;
+}
 
-  // Save balance
-  const balanceSheet = XLSX.utils.json_to_sheet([{ balance: data.balance }]);
-  XLSX.utils.book_append_sheet(workbook, balanceSheet, "Balance");
+export const saveToExcel = (data: {
+  balance: number;
+  transactions: any[];
+  alertSettings: any;
+}) => {
+  try {
+    const workbook = XLSX.utils.book_new();
+    
+    // Salvar transações
+    const transactionsSheet = XLSX.utils.json_to_sheet(data.transactions);
+    XLSX.utils.book_append_sheet(workbook, transactionsSheet, "Transações");
+    
+    // Salvar saldo
+    const balanceSheet = XLSX.utils.json_to_sheet([{ balance: data.balance }]);
+    XLSX.utils.book_append_sheet(workbook, balanceSheet, "Saldo");
+    
+    // Salvar configurações de alerta
+    const alertSettingsSheet = XLSX.utils.json_to_sheet([data.alertSettings]);
+    XLSX.utils.book_append_sheet(workbook, alertSettingsSheet, "Configurações");
 
-  // Save transactions
-  const transactionsSheet = XLSX.utils.json_to_sheet(data.transactions);
-  XLSX.utils.book_append_sheet(workbook, transactionsSheet, "Transactions");
-
-  // Save alert settings
-  const alertSettingsSheet = XLSX.utils.json_to_sheet([data.alertSettings]);
-  XLSX.utils.book_append_sheet(workbook, alertSettingsSheet, "AlertSettings");
-
-  XLSX.writeFile(workbook, EXCEL_FILE);
+    // Salvar o arquivo
+    XLSX.writeFile(workbook, EXCEL_FILE);
+  } catch (error) {
+    console.error("Erro ao salvar arquivo Excel:", error);
+  }
 };
 
-export const loadFromExcel = (): AppData | null => {
+export const loadFromExcel = () => {
   try {
     const workbook = XLSX.readFile(EXCEL_FILE);
-
-    // Load balance
-    const balanceSheet = workbook.Sheets["Balance"];
-    const balanceData = XLSX.utils.sheet_to_json(balanceSheet)[0] as {
-      balance: number;
-    };
-
-    // Load transactions
-    const transactionsSheet = workbook.Sheets["Transactions"];
-    const transactions = XLSX.utils.sheet_to_json(
-      transactionsSheet,
-    ) as Transaction[];
-
-    // Load alert settings
-    const alertSettingsSheet = workbook.Sheets["AlertSettings"];
-    const alertSettings = XLSX.utils.sheet_to_json(
-      alertSettingsSheet,
-    )[0] as AlertSettings;
+    
+    // Carregar transações
+    const transactionsSheet = workbook.Sheets["Transações"];
+    const transactions = XLSX.utils.sheet_to_json(transactionsSheet);
+    
+    // Carregar saldo
+    const balanceSheet = workbook.Sheets["Saldo"];
+    const balanceData = XLSX.utils.sheet_to_json(balanceSheet)[0] as BalanceData;
+    const balance = balanceData?.balance || 0;
+    
+    // Carregar configurações de alerta
+    const alertSettingsSheet = workbook.Sheets["Configurações"];
+    const alertSettings = XLSX.utils.sheet_to_json(alertSettingsSheet)[0] || {};
 
     return {
-      balance: balanceData.balance,
-      transactions: transactions.map((t) => ({ ...t, date: new Date(t.date) })),
+      transactions,
+      balance,
       alertSettings,
     };
   } catch (error) {
-    console.error("Error loading Excel file:", error);
-    return null;
+    console.error("Erro ao carregar arquivo Excel:", error);
+    return {
+      transactions: [],
+      balance: 0,
+      alertSettings: {},
+    };
   }
 };

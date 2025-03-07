@@ -77,59 +77,59 @@ const AlertSettings = ({
   };
 
   return (
-    <Card className="p-6 bg-white w-[400px] max-h-[70vh] overflow-y-auto">
+    <Card className="p-6 bg-white w-[400px] max-h-[70vh] overflow-y-auto border-[#C9DDEE]">
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-[#27568B]">
             <Bell className="w-5 h-5" /> Configuração de Alertas
           </h2>
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Alertas de Saldo</h3>
+          <h3 className="text-lg font-medium text-[#27568B]">Alertas de Saldo</h3>
           <div className="grid gap-4">
             <div className="space-y-2">
-              <Label>Alerta Amarelo (€)</Label>
+              <Label className="text-[#27568B]">Alerta Amarelo (€)</Label>
               <Input
                 type="number"
                 value={settings.balanceAlerts.yellow}
                 onChange={(e) =>
                   handleBalanceAlertChange("yellow", e.target.value)
                 }
-                className="bg-yellow-50"
+                className="bg-[#C9DDEE]/10 border-[#C9DDEE] text-[#27568B] focus:border-[#47A1C4]"
               />
             </div>
             <div className="space-y-2">
-              <Label>Alerta Laranja (€)</Label>
+              <Label className="text-[#27568B]">Alerta Laranja (€)</Label>
               <Input
                 type="number"
                 value={settings.balanceAlerts.orange}
                 onChange={(e) =>
                   handleBalanceAlertChange("orange", e.target.value)
                 }
-                className="bg-orange-50"
+                className="bg-[#C9DDEE]/10 border-[#C9DDEE] text-[#27568B] focus:border-[#47A1C4]"
               />
             </div>
             <div className="space-y-2">
-              <Label>Alerta Vermelho (€)</Label>
+              <Label className="text-[#27568B]">Alerta Vermelho (€)</Label>
               <Input
                 type="number"
                 value={settings.balanceAlerts.red}
                 onChange={(e) =>
                   handleBalanceAlertChange("red", e.target.value)
                 }
-                className="bg-red-50"
+                className="bg-[#C9DDEE]/10 border-[#C9DDEE] text-[#27568B] focus:border-[#47A1C4]"
               />
             </div>
           </div>
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Alertas por Categoria</h3>
+          <h3 className="text-lg font-medium text-[#27568B]">Alertas por Categoria</h3>
           <div className="grid gap-4">
             {categories.map((category) => (
               <div key={category} className="space-y-2">
-                <Label>{category}</Label>
+                <Label className="text-[#27568B]">{category}</Label>
                 <Input
                   type="number"
                   placeholder="Limite mensal (€)"
@@ -141,6 +141,7 @@ const AlertSettings = ({
                   onChange={(e) =>
                     handleCategoryAlertChange(category, e.target.value)
                   }
+                  className="bg-[#C9DDEE]/10 border-[#C9DDEE] text-[#27568B] focus:border-[#47A1C4]"
                 />
               </div>
             ))}
@@ -148,7 +149,7 @@ const AlertSettings = ({
         </div>
 
         <Button
-          className="w-full"
+          className="w-full bg-[#27568B] hover:bg-[#47A1C4]"
           onClick={() => {
             onSave(settings);
             localStorage.setItem("alertSettings", JSON.stringify(settings));

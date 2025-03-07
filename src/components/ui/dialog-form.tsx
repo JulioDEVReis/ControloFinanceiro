@@ -15,9 +15,9 @@ export function DialogForm({
 }: DialogFormProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] bg-white border-[#C9DDEE]">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="text-[#27568B]">{title}</DialogTitle>
         </DialogHeader>
         {children}
       </DialogContent>

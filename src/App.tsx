@@ -8,7 +8,7 @@ function App() {
     import.meta.env.VITE_TEMPO === "true" ? useRoutes(routes) : null;
 
   return (
-    <Suspense fallback={<p>Loading...</p>}>
+    <Suspense fallback={<p>Carregando...</p>}>
       {!tempoRoutes && (
         <Routes>
           <Route path="/" element={<Home />} />

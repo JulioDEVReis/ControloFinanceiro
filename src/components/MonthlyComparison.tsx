@@ -8,37 +8,30 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
+import { Transaction } from "../lib/types";
 
 interface MonthlyComparisonProps {
-  data?: Array<{
-    month: string;
-    expenses: number;
-  }>;
+  transactions: Transaction[];
 }
 
-const MonthlyComparison = ({ data }: MonthlyComparisonProps) => {
+const MonthlyComparison = ({ transactions }: MonthlyComparisonProps) => {
   const getMonthlyData = () => {
-    const transactions = JSON.parse(
-      localStorage.getItem("transactions") || "[]",
-    );
     const today = new Date();
+    const currentYear = today.getFullYear();
     const monthsData = [];
 
-    // Get last 6 months
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date();
-      date.setMonth(today.getMonth() - i);
+    // Get all months of the current year
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(currentYear, i);
       const monthStr = date.toLocaleString("default", { month: "short" });
-      const monthNum = date.getMonth();
-      const year = date.getFullYear();
 
       // Filter transactions for this month
       const monthExpenses = transactions
         .filter((t) => {
           const tDate = new Date(t.date);
           return (
-            tDate.getMonth() === monthNum &&
-            tDate.getFullYear() === year &&
+            tDate.getMonth() === i &&
+            tDate.getFullYear() === currentYear &&
             t.type === "expense"
           );
         })
@@ -69,6 +62,7 @@ const MonthlyComparison = ({ data }: MonthlyComparisonProps) => {
               fontSize={12}
               tickLine={false}
               axisLine={false}
+              interval={0}
             />
             <YAxis
               stroke="#888888"
@@ -83,7 +77,7 @@ const MonthlyComparison = ({ data }: MonthlyComparisonProps) => {
                   return (
                     <div className="bg-white p-2 border rounded-lg shadow-sm">
                       <p className="text-sm font-medium">
-                        €{payload[0].value.toFixed(2)}
+                        €{(payload[0].value as number).toFixed(2)}
                       </p>
                     </div>
                   );
@@ -91,7 +85,7 @@ const MonthlyComparison = ({ data }: MonthlyComparisonProps) => {
                 return null;
               }}
             />
-            <Bar dataKey="expenses" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="expenses" fill="#47A1C4" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

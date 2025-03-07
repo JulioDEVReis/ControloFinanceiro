@@ -21,10 +21,10 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader = ({
-  balance = 1000.0,
-  onAddExpense = () => console.log("Add expense clicked"),
-  onAddIncome = () => console.log("Add income clicked"),
-  onOpenAlertSettings = () => console.log("Open alert settings clicked"),
+  balance = 0,
+  onAddExpense = () => console.log("Adicionar Despesa"),
+  onAddIncome = () => console.log("Adicionar Receita"),
+  onOpenAlertSettings = () => console.log("Abrir configurações de alerta"),
 }: DashboardHeaderProps) => {
   const [notifications, setNotifications] = React.useState<
     Array<{ id: string; message: string }>
@@ -134,16 +134,16 @@ const DashboardHeader = ({
   }, [currentBalance]);
 
   return (
-    <Card className="w-full h-20 bg-white border-b flex items-center justify-between px-6">
+    <Card className="w-full h-20 bg-white border-b border-[#C9DDEE] flex items-center justify-between px-6">
       <div className="flex items-center gap-6">
         <div className="flex flex-col">
-          <span className="text-sm text-gray-500">Saldo Total</span>
-          <span className="text-2xl font-semibold">
+          <span className="text-sm text-[#47A1C4]">Saldo Total</span>
+          <span className="text-2xl font-semibold text-[#27568B]">
             € {currentBalance.toLocaleString()}
           </span>
         </div>
 
-        <div className="h-6 w-px bg-gray-200 mx-4" />
+        <div className="h-6 w-px bg-[#C9DDEE] mx-4" />
 
         <Button
           variant="outline"
@@ -152,7 +152,7 @@ const DashboardHeader = ({
               new CustomEvent("generateReport", { detail: { type: "month" } }),
             )
           }
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 border-[#C9DDEE] text-[#27568B] hover:bg-[#C9DDEE]"
         >
           <Download className="h-4 w-4" />
           Relatório Mensal
@@ -165,7 +165,7 @@ const DashboardHeader = ({
               new CustomEvent("generateReport", { detail: { type: "year" } }),
             )
           }
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 border-[#C9DDEE] text-[#27568B] hover:bg-[#C9DDEE]"
         >
           <Download className="h-4 w-4" />
           Relatório Anual
@@ -176,7 +176,7 @@ const DashboardHeader = ({
         <Button
           variant="outline"
           onClick={onAddIncome}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 border-[#C9DDEE] text-[#27568B] hover:bg-[#C9DDEE]"
         >
           <Plus className="h-4 w-4" />
           Adicionar Receita
@@ -184,7 +184,7 @@ const DashboardHeader = ({
 
         <Button
           onClick={onAddExpense}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+          className="flex items-center gap-2 bg-[#27568B] hover:bg-[#47A1C4]"
         >
           <Plus className="h-4 w-4" />
           Adicionar Despesa
@@ -194,30 +194,30 @@ const DashboardHeader = ({
           variant="outline"
           size="icon"
           onClick={onOpenAlertSettings}
-          className="relative"
+          className="relative border-[#C9DDEE] text-[#27568B] hover:bg-[#C9DDEE]"
         >
           <Settings className="h-4 w-4" />
         </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="relative">
+            <Button variant="outline" size="icon" className="relative border-[#C9DDEE] text-[#27568B] hover:bg-[#C9DDEE]">
               <Bell className="h-4 w-4 bell-icon" />
               {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-[#B68250] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
                   {notifications.length}
                 </span>
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuContent align="end" className="w-64 bg-white border-[#C9DDEE]">
             {notifications.length === 0 ? (
-              <DropdownMenuItem className="py-2 text-gray-500">
+              <DropdownMenuItem className="py-2 text-[#47A1C4]">
                 Nenhuma notificação
               </DropdownMenuItem>
             ) : (
               notifications.map((notification) => (
-                <DropdownMenuItem key={notification.id} className="py-2">
+                <DropdownMenuItem key={notification.id} className="py-2 text-[#27568B] hover:bg-[#C9DDEE]">
                   {notification.message}
                 </DropdownMenuItem>
               ))

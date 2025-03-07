@@ -1,5 +1,5 @@
 import React from "react";
-import { Card } from "./ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
@@ -13,414 +13,226 @@ import {
   SelectValue,
 } from "./ui/select";
 import { format } from "date-fns";
-import { CalendarIcon, Search } from "lucide-react";
+import { CalendarIcon, Search, Pencil, Trash2 } from "lucide-react";
 import { Label } from "./ui/label";
-
-interface Transaction {
-  id: string;
-  date: Date;
-  amount: number;
-  category: string;
-  description: string;
-}
+import { Transaction } from "../lib/types";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion";
+import { DateRange } from "react-day-picker";
 
 interface TransactionHistoryProps {
   transactions?: Transaction[];
 }
 
-const defaultTransactions: Transaction[] = [
-  {
-    id: "1",
-    date: new Date("2024-03-15"),
-    amount: 120.5,
-    category: "Mercado",
-    description: "Compras semanais",
-  },
-  {
-    id: "2",
-    date: new Date("2024-03-14"),
-    amount: 45.0,
-    category: "Saúde",
-    description: "Farmácia",
-  },
-  {
-    id: "3",
-    date: new Date("2024-03-13"),
-    amount: 89.99,
-    category: "Compras",
-    description: "Roupas novas",
-  },
-];
-
 const ITEMS_PER_PAGE = 20;
 
 interface EditTransactionForm {
+  id: string;
   date: Date;
   amount: number;
   category: string;
   description: string;
+  type: string;
+  isEssential?: boolean;
 }
 
 const categories = [
-  "Saúde",
-  "Lazer",
-  "Mercado",
-  "Streaming",
-  "Empréstimos",
-  "Carro",
-  "Utilidades",
-  "Compras",
   "Alimentação",
-  "Serviços para casa",
-  "Produtos para casa",
+  "Carro",
+  "Casa",
+  "Compras",
+  "Empréstimos",
+  "Lazer",
   "Manutenção para casa",
+  "Mercado",
+  "Produtos para casa",
+  "Saúde",
+  "Serviços para casa",
+  "Streaming",
+  "Utilidades",
 ];
 
-const TransactionHistory = ({
-  transactions: propTransactions = defaultTransactions,
-}: TransactionHistoryProps) => {
-  const storedTransactions = JSON.parse(
-    localStorage.getItem("transactions") || "[]",
+const incomeCategories = [
+  "Entrada - Extras",
+  "Entrada - Salário",
+  "Entrada - Vendas",
+];
+
+const ExpenseDistribution = () => {
+  const [dateRange, setDateRange] = React.useState<DateRange>({
+    from: undefined,
+    to: undefined,
+  });
+
+  return (
+    <Card>
+      <div className="flex justify-between items-center mb-4">
+        <h3>Distribuição de Despesas</h3>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline">
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateRange.from ? (
+                dateRange.to ? (
+                  <>
+                    {format(dateRange.from, "dd/MM/yyyy")} -{" "}
+                    {format(dateRange.to, "dd/MM/yyyy")}
+                  </>
+                ) : (
+                  format(dateRange.from, "dd/MM/yyyy")
+                )
+              ) : (
+                <span>Selecionar período</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={dateRange.from}
+              selected={dateRange}
+              onSelect={setDateRange}
+              numberOfMonths={2}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+      {/* Resto do componente */}
+    </Card>
   );
-  const transactions = [...storedTransactions, ...propTransactions].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  );
+};
+
+const TransactionHistory = ({ transactions: propTransactions = [] }: TransactionHistoryProps) => {
   const [date, setDate] = React.useState<Date>();
   const [selectedCategory, setSelectedCategory] = React.useState<string>();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [editingTransaction, setEditingTransaction] = React.useState<
-    ({ id: string } & EditTransactionForm) | null
-  >(null);
+  const [editingTransaction, setEditingTransaction] = React.useState<EditTransactionForm | null>(null);
+  const [localTransactions, setLocalTransactions] = React.useState<Transaction[]>([]);
+
+  React.useEffect(() => {
+    const loadTransactions = () => {
+      try {
+        const storedTransactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+        setLocalTransactions(storedTransactions);
+      } catch (error) {
+        console.error("Erro ao carregar transações:", error);
+        setLocalTransactions([]);
+      }
+    };
+
+    loadTransactions();
+  }, []);
+
+  const transactions = propTransactions.length > 0 ? propTransactions : localTransactions;
 
   const handleDelete = (id: string) => {
-    const storedTransactions = JSON.parse(
-      localStorage.getItem("transactions") || "[]",
-    );
-    const transaction = storedTransactions.find((t) => t.id === id);
-    if (!transaction) return;
+    try {
+      const storedTransactions = JSON.parse(
+        localStorage.getItem("transactions") || "[]",
+      );
+      const transaction = storedTransactions.find((t) => t.id === id);
+      if (!transaction) return;
 
-    const newTransactions = storedTransactions.filter((t) => t.id !== id);
-    localStorage.setItem("transactions", JSON.stringify(newTransactions));
+      const newTransactions = storedTransactions.filter((t) => t.id !== id);
+      localStorage.setItem("transactions", JSON.stringify(newTransactions));
 
-    // Update balance
-    const currentBalance = parseFloat(localStorage.getItem("balance") || "0");
-    // If it's an expense (negative amount), we add it back to the balance
-    // If it's an income (positive amount), we subtract it from the balance
-    const newBalance = currentBalance - transaction.amount; // Since amount is already negative for expenses, this works correctly
-    localStorage.setItem("balance", newBalance.toString());
+      // Update balance
+      const currentBalance = parseFloat(localStorage.getItem("balance") || "0");
+      const newBalance = currentBalance - transaction.amount;
+      localStorage.setItem("balance", newBalance.toString());
 
-    window.location.reload();
+      // Atualizar o estado local
+      setLocalTransactions(newTransactions);
+    } catch (error) {
+      console.error("Erro ao excluir transação:", error);
+    }
   };
 
-  const handleEdit = (transaction: { id: string } & EditTransactionForm) => {
-    const storedTransactions = JSON.parse(
-      localStorage.getItem("transactions") || "[]",
-    );
-    const oldTransaction = storedTransactions.find(
-      (t) => t.id === transaction.id,
-    );
-    if (!oldTransaction) return;
+  const handleEdit = (transaction: EditTransactionForm) => {
+    try {
+      const storedTransactions = JSON.parse(
+        localStorage.getItem("transactions") || "[]",
+      );
+      const oldTransaction = storedTransactions.find(
+        (t: Transaction) => t.id === transaction.id,
+      );
+      if (!oldTransaction) return;
 
-    const newTransactions = storedTransactions.map((t) => {
-      if (t.id === transaction.id) {
-        return {
-          ...t,
-          date: transaction.date,
-          amount:
-            transaction.type === "expense"
+      const newTransactions = storedTransactions.map((t: Transaction) => {
+        if (t.id === transaction.id) {
+          return {
+            ...t,
+            date: transaction.date,
+            amount: transaction.type === "expense"
               ? -Math.abs(transaction.amount)
               : Math.abs(transaction.amount),
-          category: transaction.category,
-          description: transaction.description,
-        };
-      }
-      return t;
-    });
+            category: transaction.category,
+            description: transaction.description,
+            isEssential: transaction.isEssential,
+          };
+        }
+        return t;
+      });
 
-    localStorage.setItem("transactions", JSON.stringify(newTransactions));
-
-    // Update balance
-    const currentBalance = parseFloat(localStorage.getItem("balance") || "0");
-    const balanceDiff = transaction.amount - oldTransaction.amount;
-    const newBalance = currentBalance + balanceDiff;
-    localStorage.setItem("balance", newBalance.toString());
-
-    setEditingTransaction(null);
-    window.location.reload();
+      localStorage.setItem("transactions", JSON.stringify(newTransactions));
+      
+      // Atualizar o estado local
+      setLocalTransactions(newTransactions);
+      setEditingTransaction(null);
+    } catch (error) {
+      console.error("Erro ao editar transação:", error);
+    }
   };
 
   return (
-    <Card className="w-full p-6 bg-white">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Histórico de Transações</h2>
-          <div className="flex gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-[240px] justify-start text-left font-normal"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Selecionar data</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-
-            <Select
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
+    <Card className="w-full bg-white">
+      <CardHeader>
+        <CardTitle className="text-[#27568B]">Histórico de Transações</CardTitle>
+        <CardDescription className="text-[#47A1C4]">
+          Visualize e gerencie todas as suas transações
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {transactions.map((transaction) => (
+            <div
+              key={transaction.id}
+              className="flex items-center justify-between p-4 rounded-lg border border-[#C9DDEE] bg-white"
             >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as Categorias</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Pesquisar transações..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-md border">
-          <div className="grid grid-cols-5 gap-4 p-4 font-medium border-b">
-            <div>Data</div>
-            <div>Categoria</div>
-            <div>Descrição</div>
-            <div className="text-right">Valor</div>
-            <div></div>
-          </div>
-          <div className="divide-y">
-            {transactions
-              .filter((transaction) => {
-                // Filter by date if selected
-                if (
-                  date &&
-                  new Date(transaction.date).toDateString() !==
-                    date.toDateString()
-                ) {
-                  return false;
-                }
-                // Filter by category if selected
-                if (
-                  selectedCategory &&
-                  selectedCategory !== "all" &&
-                  transaction.category !== selectedCategory
-                ) {
-                  return false;
-                }
-                // Filter by search query
-                if (
-                  searchQuery &&
-                  !(
-                    transaction.description
-                      .toLowerCase()
-                      .includes(searchQuery.toLowerCase()) ||
-                    transaction.category
-                      .toLowerCase()
-                      .includes(searchQuery.toLowerCase()) ||
-                    transaction.amount.toString().includes(searchQuery)
-                  )
-                ) {
-                  return false;
-                }
-                return true;
-              })
-              .slice(
-                (currentPage - 1) * ITEMS_PER_PAGE,
-                currentPage * ITEMS_PER_PAGE,
-              )
-              .map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="grid grid-cols-5 gap-4 p-4 items-center hover:bg-muted/50"
-                >
-                  <div>{format(new Date(transaction.date), "dd/MM/yyyy")}</div>
-                  <div>{transaction.category}</div>
-                  <div>{transaction.description}</div>
-                  <div className="text-right">
-                    €{Math.abs(transaction.amount).toFixed(2)}
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setEditingTransaction({
-                          id: transaction.id,
-                          date: new Date(transaction.date),
-                          amount: Math.abs(transaction.amount),
-                          category: transaction.category,
-                          description: transaction.description,
-                        })
-                      }
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(transaction.id)}
-                    >
-                      Eliminar
-                    </Button>
-                  </div>
-                </div>
-              ))}
-          </div>
-          <div className="flex items-center justify-between px-4 py-3 border-t">
-            <div className="text-sm text-gray-500">
-              A mostrar{" "}
-              {Math.min(
-                (currentPage - 1) * ITEMS_PER_PAGE + 1,
-                transactions.length,
-              )}{" "}
-              até {Math.min(currentPage * ITEMS_PER_PAGE, transactions.length)}{" "}
-              de {transactions.length} transações
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                Anterior
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={currentPage * ITEMS_PER_PAGE >= transactions.length}
-              >
-                Próximo
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-      {editingTransaction && (
-        <DialogForm
-          title="Editar Transação"
-          isOpen={true}
-          onClose={() => setEditingTransaction(null)}
-        >
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Data</Label>
-              <Popover>
-                <PopoverTrigger asChild>
+              <div className="space-y-1">
+                <p className="font-medium text-[#27568B]">{transaction.description}</p>
+                <p className="text-sm text-[#47A1C4]">{transaction.category}</p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <span className={`font-semibold ${
+                  transaction.type === "income" ? "text-green-600" : "text-[#B68250]"
+                }`}>
+                  {transaction.type === "income" ? "+" : "-"} € {transaction.amount.toLocaleString()}
+                </span>
+                <div className="flex space-x-2">
                   <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(transaction)}
+                    className="text-[#47A1C4] hover:text-[#27568B] hover:bg-[#C9DDEE]"
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(editingTransaction.date, "dd/MM/yyyy")}
+                    <Pencil className="h-4 w-4" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={editingTransaction.date}
-                    onSelect={(date) =>
-                      date &&
-                      setEditingTransaction({ ...editingTransaction, date })
-                    }
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(transaction.id)}
+                    className="text-[#B68250] hover:text-[#B68250] hover:bg-[#C9DDEE]"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
-
-            <div className="grid gap-2">
-              <Label>Valor</Label>
-              <Input
-                type="number"
-                value={editingTransaction.amount}
-                onChange={(e) =>
-                  setEditingTransaction({
-                    ...editingTransaction,
-                    amount: parseFloat(e.target.value) || 0,
-                  })
-                }
-                step="0.01"
-                min="0"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Categoria</Label>
-              <Select
-                value={editingTransaction.category}
-                onValueChange={(value) =>
-                  setEditingTransaction({
-                    ...editingTransaction,
-                    category: value,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Descrição</Label>
-              <Input
-                value={editingTransaction.description}
-                onChange={(e) =>
-                  setEditingTransaction({
-                    ...editingTransaction,
-                    description: e.target.value,
-                  })
-                }
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setEditingTransaction(null)}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={() => handleEdit(editingTransaction)}>
-              Guardar Alterações
-            </Button>
-          </div>
-        </DialogForm>
-      )}
+          ))}
+        </div>
+      </CardContent>
     </Card>
   );
 };

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import DashboardHeader from "./DashboardHeader";
 import QuickAddExpense from "./QuickAddExpense";
 import AnalyticsDashboard from "./AnalyticsDashboard";
@@ -10,69 +10,104 @@ import AlertSettings from "./AlertSettings";
 import { format } from "date-fns";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { Transaction, AlertSettings as AlertSettingsType } from "../lib/types";
+import { FinanceStorage } from "../lib/storage";
+import { loadFromExcel, saveToExcel } from "../lib/excel";
+import MonthlyComparison from "./MonthlyComparison";
+import ExpenseDistribution from "./ExpenseDistribution";
 
 interface HomeProps {
   initialBalance?: number;
-  expenseData?: Array<{
-    category: string;
-    amount: number;
-  }>;
-  monthlyData?: Array<{
-    month: string;
-    expenses: number;
-  }>;
-  transactions?: Array<{
-    id: string;
-    date: Date;
-    amount: number;
-    category: string;
-    description: string;
-  }>;
-}
-
-import { loadFromExcel, saveToExcel } from "../lib/excel";
-
-// Initialize or load data from Excel
-const excelData = loadFromExcel();
-if (excelData) {
-  localStorage.setItem("balance", excelData.balance.toString());
-  localStorage.setItem("transactions", JSON.stringify(excelData.transactions));
-  localStorage.setItem(
-    "alertSettings",
-    JSON.stringify(excelData.alertSettings),
-  );
-} else if (!localStorage.getItem("initialized")) {
-  localStorage.setItem("balance", "1000");
-  localStorage.setItem("transactions", "[]");
-  localStorage.setItem("initialized", "true");
+  transactions?: Array<Transaction>;
 }
 
 const Home = ({
-  initialBalance = 1000,
-  expenseData,
-  monthlyData,
-  transactions,
+  initialBalance = 0,
+  transactions: propTransactions,
 }: HomeProps) => {
   const [showQuickAdd, setShowQuickAdd] = React.useState(false);
   const [showIncomeAdd, setShowIncomeAdd] = React.useState(false);
   const [showAlertSettings, setShowAlertSettings] = React.useState(false);
-  const [alertSettings, setAlertSettings] = React.useState(() => {
-    const saved = localStorage.getItem("alertSettings");
-    return saved
-      ? JSON.parse(saved)
-      : {
-          balanceAlerts: {
-            yellow: 500,
-            orange: 200,
-            red: 100,
-          },
-          categoryAlerts: [],
-        };
+  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [alertSettings, setAlertSettings] = React.useState<AlertSettingsType>({
+    balanceAlerts: {
+      yellow: 300,
+      orange: 200,
+      red: 100,
+    },
+    categoryAlerts: [],
   });
   const analyticsRef = React.useRef(null);
 
+  React.useEffect(() => {
+    const initStorage = async () => {
+      try {
+        const storage = FinanceStorage.getInstance();
+        await storage.init();
+        
+        // Carregar dados do IndexedDB
+        const data = await storage.getData();
+        if (data) {
+          // Atualizar estado com os dados do IndexedDB
+          localStorage.setItem("balance", data.balance.toString());
+          localStorage.setItem("transactions", JSON.stringify(data.transactions));
+          localStorage.setItem("alertSettings", JSON.stringify(data.alertSettings));
+          
+          // Atualizar estado local
+          setTransactions(data.transactions as Transaction[]);
+          setAlertSettings(data.alertSettings as AlertSettingsType);
+        } else {
+          // Carregar dados do Excel como fallback
+          const excelData = loadFromExcel();
+          if (excelData) {
+            await storage.saveData({
+              balance: excelData.balance,
+              transactions: excelData.transactions as Transaction[],
+              alertSettings: excelData.alertSettings as AlertSettingsType
+            });
+            
+            // Atualizar localStorage com dados do Excel
+            localStorage.setItem("balance", excelData.balance.toString());
+            localStorage.setItem("transactions", JSON.stringify(excelData.transactions));
+            localStorage.setItem("alertSettings", JSON.stringify(excelData.alertSettings));
+            
+            // Atualizar estado local
+            setTransactions(excelData.transactions as Transaction[]);
+            setAlertSettings(excelData.alertSettings as AlertSettingsType);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao inicializar storage:', error);
+      }
+    };
+
+    initStorage();
+  }, []);
+
+  React.useEffect(() => {
+    const loadTransactions = () => {
+      const storedTransactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+      setTransactions(storedTransactions);
+    };
+
+    loadTransactions();
+    window.addEventListener('storage', loadTransactions);
+    return () => window.removeEventListener('storage', loadTransactions);
+  }, []);
+
   const generatePDF = async (type: "month" | "year", date: Date) => {
     if (!analyticsRef.current) return;
+
+    // Salvar dados atuais no Excel antes de gerar o relatório
+    const currentBalance = parseFloat(localStorage.getItem("balance") || "0");
+    const currentTransactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+    const currentAlertSettings = JSON.parse(localStorage.getItem("alertSettings") || "{}");
+
+    saveToExcel({
+      balance: currentBalance,
+      transactions: currentTransactions,
+      alertSettings: currentAlertSettings
+    });
 
     const canvas = await html2canvas(analyticsRef.current);
     const imgData = canvas.toDataURL("image/png");
@@ -111,6 +146,32 @@ const Home = ({
     setShowIncomeAdd(true);
   };
 
+  const updateStorage = async (newTransactions: Transaction[], newBalance: number) => {
+    try {
+      const storage = FinanceStorage.getInstance();
+      const currentAlertSettings = JSON.parse(localStorage.getItem("alertSettings") || "{}");
+      
+      // Atualizar IndexedDB
+      await storage.saveData({
+        balance: newBalance,
+        transactions: newTransactions,
+        alertSettings: currentAlertSettings
+      });
+
+      // Atualizar localStorage
+      localStorage.setItem("transactions", JSON.stringify(newTransactions));
+      localStorage.setItem("balance", newBalance.toString());
+
+      // Atualizar estado local
+      setTransactions(newTransactions);
+
+      // Disparar evento de storage para atualizar outros componentes
+      window.dispatchEvent(new Event('storage'));
+    } catch (error) {
+      console.error('Erro ao atualizar storage:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -123,8 +184,7 @@ const Home = ({
 
         <div className="space-y-6">
           <AnalyticsDashboard
-            expenseData={expenseData}
-            monthlyData={monthlyData}
+            transactions={transactions}
           />
 
           <TransactionHistory transactions={transactions} />
@@ -137,7 +197,7 @@ const Home = ({
             onClose={() => setShowQuickAdd(false)}
           >
             <QuickAddExpense
-              onSubmit={(data) => {
+              onSubmit={async (data) => {
                 const existingTransactions = JSON.parse(
                   localStorage.getItem("transactions") || "[]",
                 );
@@ -149,21 +209,13 @@ const Home = ({
                   description: data.description,
                   type: "expense",
                 };
-                localStorage.setItem(
-                  "transactions",
-                  JSON.stringify([...existingTransactions, newTransaction]),
-                );
+                
+                const newTransactions = [...existingTransactions, newTransaction];
+                const currentBalance = parseFloat(localStorage.getItem("balance") || "0");
+                const newBalance = currentBalance - data.amount;
 
-                const currentBalance = parseFloat(
-                  localStorage.getItem("balance") || "0",
-                );
-                localStorage.setItem(
-                  "balance",
-                  (currentBalance - data.amount).toString(),
-                );
-
+                await updateStorage(newTransactions, newBalance);
                 setShowQuickAdd(false);
-                window.location.reload();
               }}
             />
           </DialogForm>
@@ -174,9 +226,27 @@ const Home = ({
             onClose={() => setShowIncomeAdd(false)}
           >
             <IncomeManager
-              currentBalance={parseFloat(
-                localStorage.getItem("balance") || "0",
-              )}
+              currentBalance={parseFloat(localStorage.getItem("balance") || "0")}
+              onIncomeAdd={async (data) => {
+                const existingTransactions = JSON.parse(
+                  localStorage.getItem("transactions") || "[]",
+                );
+                const newTransaction = {
+                  id: Math.random().toString(36).substr(2, 9),
+                  date: new Date(),
+                  amount: data.amount,
+                  category: `Income - ${data.type}`,
+                  description: data.description,
+                  type: "income",
+                };
+                
+                const newTransactions = [...existingTransactions, newTransaction];
+                const currentBalance = parseFloat(localStorage.getItem("balance") || "0");
+                const newBalance = currentBalance + data.amount;
+
+                await updateStorage(newTransactions, newBalance);
+                setShowIncomeAdd(false);
+              }}
             />
           </DialogForm>
 
@@ -187,8 +257,24 @@ const Home = ({
           >
             <AlertSettings
               initialSettings={alertSettings}
-              onSave={(settings) => {
+              onSave={async (settings) => {
                 setAlertSettings(settings);
+                localStorage.setItem("alertSettings", JSON.stringify(settings));
+                
+                try {
+                  const storage = FinanceStorage.getInstance();
+                  const currentTransactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+                  const currentBalance = parseFloat(localStorage.getItem("balance") || "0");
+                  
+                  await storage.saveData({
+                    balance: currentBalance,
+                    transactions: currentTransactions,
+                    alertSettings: settings
+                  });
+                } catch (error) {
+                  console.error('Erro ao salvar configurações:', error);
+                }
+                
                 setShowAlertSettings(false);
               }}
             />

@@ -15,7 +15,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "../lib/utils";
-import { saveToExcel } from "../lib/excel";
 
 interface QuickAddExpenseProps {
   onSubmit?: (data: {
@@ -23,23 +22,25 @@ interface QuickAddExpenseProps {
     amount: number;
     category: string;
     description: string;
+    isEssential: boolean;
   }) => void;
   isOpen?: boolean;
 }
 
 const categories = [
-  "Saúde",
-  "Lazer",
-  "Mercado",
-  "Streaming",
-  "Empréstimos",
-  "Carro",
-  "Utilidades",
-  "Compras",
   "Alimentação",
-  "Serviços para casa",
-  "Produtos para casa",
+  "Carro",
+  "Casa",
+  "Compras",
+  "Empréstimos",
+  "Lazer",
   "Manutenção para casa",
+  "Mercado",
+  "Produtos para casa",
+  "Saúde",
+  "Serviços para casa",
+  "Streaming",
+  "Utilidades",
 ];
 
 const QuickAddExpense = ({
@@ -50,6 +51,7 @@ const QuickAddExpense = ({
   const [amount, setAmount] = React.useState("");
   const [category, setCategory] = React.useState(categories[0]);
   const [description, setDescription] = React.useState("");
+  const [isEssential, setIsEssential] = React.useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +69,7 @@ const QuickAddExpense = ({
       category,
       description,
       type: "expense",
+      isEssential,
     };
 
     const newTransactions = [...existingTransactions, newTransaction];
@@ -76,30 +79,25 @@ const QuickAddExpense = ({
     localStorage.setItem("transactions", JSON.stringify(newTransactions));
     localStorage.setItem("balance", newBalance.toString());
 
-    // Save to Excel
-    saveToExcel({
-      balance: newBalance,
-      transactions: newTransactions,
-      alertSettings: JSON.parse(localStorage.getItem("alertSettings") || "{}"),
-    });
-
     onSubmit({
       date,
       amount: parseFloat(amount),
       category,
       description,
+      isEssential,
     });
 
     // Reset form
     setAmount("");
     setDescription("");
+    setIsEssential(false);
   };
 
   if (!isOpen) return null;
 
   return (
     <Card className="w-[400px] p-6 bg-white">
-      <h2 className="text-xl font-semibold mb-4">Adicionar Despesa</h2>
+      <h2 className="text-xl font-semibold mb-4 text-[#27568B]">Adicionar Despesa</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="date">Data</Label>
@@ -128,7 +126,7 @@ const QuickAddExpense = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="amount">Valor</Label>
+          <Label htmlFor="amount">Valor (€)</Label>
           <Input
             id="amount"
             type="number"
@@ -167,7 +165,23 @@ const QuickAddExpense = ({
           />
         </div>
 
-        <Button type="submit" className="w-full">
+        <div className="space-y-2">
+          <Label htmlFor="isEssential" className="text-[#27568B]">Despesa Essencial</Label>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isEssential"
+              checked={isEssential}
+              onChange={(e) => setIsEssential(e.target.checked)}
+              className="h-4 w-4 rounded border-[#C9DDEE] text-[#47A1C4] focus:ring-[#47A1C4]"
+            />
+            <Label htmlFor="isEssential" className="text-sm text-[#47A1C4]">
+              Marque se esta despesa é essencial para suas necessidades básicas
+            </Label>
+          </div>
+        </div>
+
+        <Button type="submit" className="w-full bg-[#27568B] hover:bg-[#47A1C4]">
           Adicionar Despesa
         </Button>
       </form>
