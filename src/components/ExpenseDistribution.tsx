@@ -1,11 +1,9 @@
 import React from "react";
-import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { format, isWithinInterval, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import {
   PieChart,
   Pie,
@@ -22,15 +20,15 @@ interface ExpenseDistributionProps {
 }
 
 const COLORS = [
-  "#C9DDEE",
-  "#27568B",
-  "#47A1C4",
-  "#B68250",
-  "#C9DDEE",
-  "#27568B",
-  "#47A1C4",
-  "#B68250",
-  "#C9DDEE",
+  "#27568B", // Azul escuro
+  "#47A1C4", // Azul claro
+  "#B68250", // Marrom
+  "#C9DDEE", // Azul muito claro
+  "#1E3F66", // Azul mais escuro
+  "#3585A3", // Azul médio
+  "#8B6239", // Marrom escuro
+  "#A7C7E7", // Azul pastel
+  "#153148", // Azul navy
 ];
 
 const ExpenseDistribution = ({ transactions }: ExpenseDistributionProps) => {
@@ -62,9 +60,10 @@ const ExpenseDistribution = ({ transactions }: ExpenseDistributionProps) => {
     }, {});
 
     // Convert to array format for the pie chart
-    return Object.entries(groupedData).map(([category, amount]) => ({
-      category,
-      amount,
+    return Object.entries(groupedData).map(([name, value], index) => ({
+      name,
+      value,
+      color: COLORS[index % COLORS.length],
     }));
   };
 
@@ -75,7 +74,37 @@ const ExpenseDistribution = ({ transactions }: ExpenseDistributionProps) => {
   };
 
   const chartData = getFilteredTransactions();
-  const total = chartData.reduce((sum, item) => sum + Number(item.amount), 0);
+  const total = chartData.reduce((sum, item) => sum + Number(item.value), 0);
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const percentage = ((data.value / total) * 100).toFixed(1);
+      return (
+        <div className="bg-white p-2 border rounded shadow">
+          <p className="font-medium text-[#27568B]">{data.name}</p>
+          <p className="text-sm text-[#47A1C4]">
+            € {data.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+          <p className="text-sm text-[#B68250]">{percentage}% do total</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const renderColorfulLegendText = (value: string, entry: any) => {
+    const categoryData = chartData.find(item => item.name === value);
+    if (categoryData) {
+      const percentage = ((categoryData.value / total) * 100).toFixed(1);
+      return (
+        <span style={{ color: entry.color }}>
+          {value} ({percentage}%)
+        </span>
+      );
+    }
+    return <span style={{ color: entry.color }}>{value}</span>;
+  };
 
   return (
     <div>
@@ -123,39 +152,51 @@ const ExpenseDistribution = ({ transactions }: ExpenseDistributionProps) => {
                 labelLine={false}
                 outerRadius={100}
                 fill="#8884d8"
-                dataKey="amount"
+                dataKey="value"
               >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                {chartData.map((entry) => (
+                  <Cell key={`cell-${entry.name}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip
-                formatter={(value) => [`€ ${Number(value).toFixed(2)}`, "Valor"]}
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                formatter={renderColorfulLegendText}
+                layout="vertical"
+                align="right"
+                verticalAlign="middle"
               />
             </PieChart>
           </ResponsiveContainer>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-4 w-full max-w-[400px]">
-          {chartData.map((category) => (
-            <div
-              key={category.category}
-              className="p-3 rounded-lg flex flex-col items-center justify-center text-center"
-              style={{ backgroundColor: `${COLORS[Object.keys(category).indexOf(category.category) % COLORS.length]}10` }}
-            >
+          {chartData.map((category) => {
+            const percentage = ((category.value / total) * 100).toFixed(1);
+            return (
               <div
-                className="text-sm font-medium"
-                style={{ color: COLORS[Object.keys(category).indexOf(category.category) % COLORS.length] }}
+                key={category.name}
+                className="p-3 rounded-lg flex flex-col items-center justify-center text-center"
+                style={{ backgroundColor: `${category.color}10` }}
               >
-                {category.category}
+                <div
+                  className="text-sm font-medium"
+                  style={{ color: category.color }}
+                >
+                  {category.name}
+                </div>
+                <div
+                  className="flex items-baseline gap-1"
+                  style={{ color: category.color }}
+                >
+                  <span className="text-base">
+                    € {category.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-xs">
+                    ({percentage}%)
+                  </span>
+                </div>
               </div>
-              <div
-                className="text-base font-bold"
-                style={{ color: COLORS[Object.keys(category).indexOf(category.category) % COLORS.length] }}
-              >
-                € {category.amount.toFixed(2)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

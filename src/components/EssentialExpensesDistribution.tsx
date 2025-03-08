@@ -1,5 +1,4 @@
 import React from "react";
-import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -13,7 +12,7 @@ interface EssentialExpensesDistributionProps {
   transactions: Transaction[];
 }
 
-const COLORS = ["#C9DDEE", "#B68250"]; // Azul claro para essenciais, Marrom para não essenciais
+const COLORS = ["#27568B", "#B68250"]; // Azul para essenciais, Marrom para não essenciais
 
 const EssentialExpensesDistribution = ({ transactions }: EssentialExpensesDistributionProps) => {
   const [dateRange, setDateRange] = React.useState<DateRange>({
@@ -42,12 +41,12 @@ const EssentialExpensesDistribution = ({ transactions }: EssentialExpensesDistri
       {
         name: "Despesas Essenciais",
         value: essential,
-        color: "#22c55e",
+        color: "#27568B",
       },
       {
         name: "Despesas Não Essenciais",
         value: nonEssential,
-        color: "#ef4444",
+        color: "#B68250",
       },
     ];
   }, [filteredTransactions]);
@@ -57,12 +56,11 @@ const EssentialExpensesDistribution = ({ transactions }: EssentialExpensesDistri
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      const percentage = ((data.value / total) * 100).toFixed(1);
       return (
         <div className="bg-white p-2 border rounded shadow">
           <p className="font-medium">{data.name}</p>
           <p className="text-sm">
-            R$ {data.value.toFixed(2)} ({percentage}%)
+            € {data.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
       );
@@ -127,18 +125,34 @@ const EssentialExpensesDistribution = ({ transactions }: EssentialExpensesDistri
           </ResponsiveContainer>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-4 w-full max-w-[400px]">
-          <div className="bg-[#C9DDEE]/20 p-3 rounded-lg flex flex-col items-center justify-center text-center">
-            <div className="text-[#27568B] text-sm font-medium">Despesas Essenciais</div>
-            <div className="text-base font-bold text-[#27568B]">
-              € {essentialData[0].value.toFixed(2)}
-            </div>
-          </div>
-          <div className="bg-[#B68250]/20 p-3 rounded-lg flex flex-col items-center justify-center text-center">
-            <div className="text-[#B68250] text-sm font-medium">Despesas Não Essenciais</div>
-            <div className="text-base font-bold text-[#B68250]">
-              € {essentialData[1].value.toFixed(2)}
-            </div>
-          </div>
+          {essentialData.map((item) => {
+            const percentage = ((item.value / total) * 100).toFixed(1);
+            return (
+              <div
+                key={item.name}
+                className="p-3 rounded-lg flex flex-col items-center justify-center text-center"
+                style={{ backgroundColor: `${item.color}10` }}
+              >
+                <div
+                  className="text-sm font-medium"
+                  style={{ color: item.color }}
+                >
+                  {item.name}
+                </div>
+                <div
+                  className="flex items-baseline gap-1"
+                  style={{ color: item.color }}
+                >
+                  <span className="text-base">
+                    € {item.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-xs">
+                    ({percentage}%)
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

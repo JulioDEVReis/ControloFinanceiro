@@ -1,8 +1,11 @@
-import { AppData, FinanceDB } from './types';
+import { AppData } from "./types";
 
 export class FinanceStorage {
-  private db: IDBDatabase;
   private static instance: FinanceStorage;
+  private db: IDBDatabase | null = null;
+  private readonly dbName = "FinanceDB";
+  private readonly storeName = "financeStore";
+  private readonly version = 1;
 
   private constructor() {}
 
@@ -14,58 +17,112 @@ export class FinanceStorage {
   }
 
   async init(): Promise<void> {
-    try {
-      this.db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open('FinanceDB', 1);
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, this.version);
+
+      request.onerror = () => {
+        console.error("Erro ao abrir banco de dados");
+        reject(new Error("Não foi possível abrir o banco de dados"));
+      };
+
+      request.onsuccess = (event) => {
+        this.db = (event.target as IDBOpenDBRequest).result;
+        console.log("Banco de dados aberto com sucesso");
+        resolve();
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
         
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-        
-        request.onupgradeneeded = (event) => {
-          const db = (event.target as IDBOpenDBRequest).result;
-          if (!db.objectStoreNames.contains('finances')) {
-            db.createObjectStore('finances', { keyPath: 'id' });
-          }
-        };
-      });
-    } catch (error) {
-      console.error('Erro ao inicializar o banco de dados:', error);
-      throw error;
-    }
+        // Verificar se o object store já existe
+        if (!db.objectStoreNames.contains(this.storeName)) {
+          // Criar o object store
+          db.createObjectStore(this.storeName);
+          console.log("Object store criado com sucesso");
+        }
+      };
+    });
   }
 
   async saveData(data: AppData): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['finances'], 'readwrite');
-      const store = transaction.objectStore('finances');
-      const financeData: FinanceDB = {
-        id: 'current',
-        ...data
-      };
-      const request = store.put(financeData);
+    if (!this.db) {
+      await this.init();
+    }
 
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+    if (!this.db) {
+      throw new Error("Banco de dados não inicializado");
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        const transaction = this.db!.transaction([this.storeName], "readwrite");
+        const store = transaction.objectStore(this.storeName);
+
+        const request = store.put(data, "financeData");
+
+        transaction.oncomplete = () => {
+          console.log("Transação completada com sucesso");
+          resolve();
+        };
+
+        transaction.onerror = () => {
+          console.error("Erro na transação:", transaction.error);
+          reject(new Error("Erro ao salvar dados"));
+        };
+
+        request.onerror = () => {
+          console.error("Erro ao salvar dados:", request.error);
+          reject(new Error("Erro ao salvar dados"));
+        };
+
+        request.onsuccess = () => {
+          console.log("Dados salvos com sucesso");
+        };
+      } catch (error) {
+        console.error("Erro ao criar transação:", error);
+        reject(error);
+      }
     });
   }
 
   async getData(): Promise<AppData | null> {
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['finances'], 'readonly');
-      const store = transaction.objectStore('finances');
-      const request = store.get('current');
+    if (!this.db) {
+      await this.init();
+    }
 
-      request.onsuccess = () => {
-        const result = request.result as FinanceDB;
-        if (result) {
-          // Remove o id antes de retornar
-          const { id, ...appData } = result;
-          resolve(appData);
-        } else {
-          resolve(null);
-        }
-      };
-      request.onerror = () => reject(request.error);
+    if (!this.db) {
+      throw new Error("Banco de dados não inicializado");
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        const transaction = this.db!.transaction([this.storeName], "readonly");
+        const store = transaction.objectStore(this.storeName);
+
+        const request = store.get("financeData");
+
+        transaction.oncomplete = () => {
+          console.log("Transação de leitura completada com sucesso");
+        };
+
+        transaction.onerror = () => {
+          console.error("Erro na transação de leitura:", transaction.error);
+          reject(new Error("Erro ao recuperar dados"));
+        };
+
+        request.onerror = () => {
+          console.error("Erro ao recuperar dados:", request.error);
+          reject(new Error("Erro ao recuperar dados"));
+        };
+
+        request.onsuccess = () => {
+          console.log("Dados recuperados com sucesso:", request.result ? "Dados encontrados" : "Nenhum dado encontrado");
+          resolve(request.result || null);
+        };
+      } catch (error) {
+        console.error("Erro ao criar transação:", error);
+        reject(error);
+      }
     });
   }
 } 

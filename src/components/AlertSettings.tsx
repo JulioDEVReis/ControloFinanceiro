@@ -1,28 +1,16 @@
 import React from "react";
-import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Bell } from "lucide-react";
-
-interface AlertSettings {
-  balanceAlerts: {
-    yellow: number;
-    orange: number;
-    red: number;
-  };
-  categoryAlerts: Array<{
-    category: string;
-    limit: number;
-  }>;
-}
+import { AlertSettings as AlertSettingsType } from "../lib/types";
 
 interface AlertSettingsProps {
-  onSave: (settings: AlertSettings) => void;
-  initialSettings?: AlertSettings;
+  onSave: (settings: AlertSettingsType) => void;
+  initialSettings?: AlertSettingsType;
 }
 
-const defaultSettings: AlertSettings = {
+const defaultSettings: AlertSettingsType = {
   balanceAlerts: {
     yellow: 500,
     orange: 200,
@@ -32,26 +20,39 @@ const defaultSettings: AlertSettings = {
 };
 
 const categories = [
-  "Saúde",
-  "Lazer",
-  "Mercado",
-  "Streaming",
-  "Empréstimos",
-  "Carro",
-  "Utilidades",
-  "Compras",
   "Alimentação",
-  "Serviços para casa",
-  "Produtos para casa",
+  "Carro",
+  "Casa",
+  "Compras",
+  "Empréstimos",
+  "Lazer",
   "Manutenção para casa",
+  "Mercado",
+  "Produtos para casa",
+  "Saúde",
+  "Serviços para casa",
+  "Streaming",
+  "Utilidades"
 ];
 
 const AlertSettings = ({
   onSave,
   initialSettings = defaultSettings,
 }: AlertSettingsProps) => {
-  const [settings, setSettings] =
-    React.useState<AlertSettings>(initialSettings);
+  const [settings, setSettings] = React.useState<AlertSettingsType>(() => {
+    // Validar e garantir que as configurações iniciais tenham a estrutura correta
+    if (!initialSettings?.balanceAlerts) {
+      return defaultSettings;
+    }
+    return {
+      balanceAlerts: {
+        yellow: initialSettings.balanceAlerts.yellow || defaultSettings.balanceAlerts.yellow,
+        orange: initialSettings.balanceAlerts.orange || defaultSettings.balanceAlerts.orange,
+        red: initialSettings.balanceAlerts.red || defaultSettings.balanceAlerts.red,
+      },
+      categoryAlerts: initialSettings.categoryAlerts || [],
+    };
+  });
 
   const handleBalanceAlertChange = (
     level: "yellow" | "orange" | "red",
@@ -77,7 +78,7 @@ const AlertSettings = ({
   };
 
   return (
-    <Card className="p-6 bg-white w-[400px] max-h-[70vh] overflow-y-auto border-[#C9DDEE]">
+    <div className="w-full">
       <div className="space-y-6">
         <div>
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-[#27568B]">
@@ -150,15 +151,12 @@ const AlertSettings = ({
 
         <Button
           className="w-full bg-[#27568B] hover:bg-[#47A1C4]"
-          onClick={() => {
-            onSave(settings);
-            localStorage.setItem("alertSettings", JSON.stringify(settings));
-          }}
+          onClick={() => onSave(settings)}
         >
           Salvar Configurações
         </Button>
       </div>
-    </Card>
+    </div>
   );
 };
 

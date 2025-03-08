@@ -29,109 +29,138 @@ const DashboardHeader = ({
   const [notifications, setNotifications] = React.useState<
     Array<{ id: string; message: string }>
   >([]);
-  const currentBalance = parseFloat(
-    localStorage.getItem("balance") || balance.toString(),
-  );
 
-  React.useEffect(() => {
-    // Check alerts on mount and when balance changes
-    const checkAlerts = () => {
-      const newNotifications = [];
-      const alertSettings = JSON.parse(
-        localStorage.getItem("alertSettings") || "{}",
-      );
+  const checkAlerts = React.useCallback(() => {
+    console.log("Verificando alertas. Saldo atual:", balance);
+    const newNotifications = [];
+    const alertSettings = JSON.parse(
+      localStorage.getItem("alertSettings") || "{}"
+    );
 
-      // Check balance alerts
-      if (alertSettings?.balanceAlerts) {
-        const { red, orange, yellow } = alertSettings.balanceAlerts;
-        if (currentBalance <= red) {
-          newNotifications.push({
-            id: "balance-red",
-            message: `Alerta: Saldo crítico! Abaixo de €${red}`,
-          });
-        } else if (currentBalance <= orange) {
-          newNotifications.push({
-            id: "balance-orange",
-            message: `Alerta: Saldo baixo! Abaixo de €${orange}`,
-          });
-        } else if (currentBalance <= yellow) {
-          newNotifications.push({
-            id: "balance-yellow",
-            message: `Alerta: Saldo se aproximando do limite! Abaixo de €${yellow}`,
-          });
-        }
-      }
+    console.log("Configurações de alerta:", alertSettings);
 
-      // Update notifications state
-      setNotifications(newNotifications);
-
-      // Update bell icon color based on notifications
-      const bellIcon = document.querySelector(".bell-icon") as HTMLElement;
-      if (bellIcon) {
-        if (newNotifications.length > 0) {
-          const hasRedAlert = newNotifications.some(
-            (n) => n.id === "balance-red",
-          );
-          const hasOrangeAlert = newNotifications.some(
-            (n) => n.id === "balance-orange",
-          );
-          const hasYellowAlert = newNotifications.some(
-            (n) => n.id === "balance-yellow",
-          );
-
-          if (hasRedAlert) {
-            bellIcon.style.color = "rgb(239, 68, 68)";
-          } else if (hasOrangeAlert) {
-            bellIcon.style.color = "rgb(249, 115, 22)";
-          } else if (hasYellowAlert) {
-            bellIcon.style.color = "rgb(234, 179, 8)";
-          }
-        } else {
-          bellIcon.style.color = "";
-        }
-      }
-
-      // Check category alerts
-      if (alertSettings?.categoryAlerts) {
-        const transactions = JSON.parse(
-          localStorage.getItem("transactions") || "[]",
-        );
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-
-        const monthlyTotals = transactions
-          .filter((t) => {
-            const date = new Date(t.date);
-            return (
-              date.getMonth() === currentMonth &&
-              date.getFullYear() === currentYear &&
-              t.type === "expense"
-            );
-          })
-          .reduce((acc, t) => {
-            acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
-            return acc;
-          }, {});
-
-        alertSettings.categoryAlerts.forEach((alert) => {
-          if (monthlyTotals[alert.category] >= alert.limit) {
-            newNotifications.push({
-              id: `category-${alert.category}`,
-              message: `Alerta: Limite mensal excedido para ${alert.category}! (€${monthlyTotals[alert.category].toFixed(2)} / €${alert.limit})`,
-            });
-          }
+    // Check balance alerts
+    if (alertSettings?.balanceAlerts) {
+      const { red, orange, yellow } = alertSettings.balanceAlerts;
+      console.log("Limites de alerta:", { red, orange, yellow });
+      console.log("Saldo atual:", balance);
+      
+      if (balance <= red) {
+        console.log("Alerta vermelho ativado");
+        newNotifications.push({
+          id: "balance-red",
+          message: `Alerta: Saldo crítico! Abaixo de €${red}`,
+        });
+      } else if (balance <= orange) {
+        console.log("Alerta laranja ativado");
+        newNotifications.push({
+          id: "balance-orange",
+          message: `Alerta: Saldo baixo! Abaixo de €${orange}`,
+        });
+      } else if (balance <= yellow) {
+        console.log("Alerta amarelo ativado");
+        newNotifications.push({
+          id: "balance-yellow",
+          message: `Alerta: Saldo se aproximando do limite! Abaixo de €${yellow}`,
         });
       }
+    }
 
-      setNotifications(newNotifications);
+    // Check category alerts
+    if (alertSettings?.categoryAlerts) {
+      const transactions = JSON.parse(
+        localStorage.getItem("transactions") || "[]",
+      );
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+
+      const monthlyTotals = transactions
+        .filter((t) => {
+          const date = new Date(t.date);
+          return (
+            date.getMonth() === currentMonth &&
+            date.getFullYear() === currentYear &&
+            t.type === "expense"
+          );
+        })
+        .reduce((acc, t) => {
+          acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
+          return acc;
+        }, {});
+
+      alertSettings.categoryAlerts.forEach((alert) => {
+        if (monthlyTotals[alert.category] >= alert.limit) {
+          newNotifications.push({
+            id: `category-${alert.category}`,
+            message: `Alerta: Limite mensal excedido para ${alert.category}! (€${monthlyTotals[alert.category].toFixed(2)} / €${alert.limit})`,
+          });
+        }
+      });
+    }
+
+    console.log("Novas notificações:", newNotifications);
+
+    // Update notifications state
+    setNotifications(newNotifications);
+
+    // Update bell icon color based on notifications
+    const bellIcon = document.querySelector(".bell-icon") as HTMLElement;
+    if (bellIcon) {
+      if (newNotifications.length > 0) {
+        const hasRedAlert = newNotifications.some(
+          (n) => n.id === "balance-red",
+        );
+        const hasOrangeAlert = newNotifications.some(
+          (n) => n.id === "balance-orange",
+        );
+        const hasYellowAlert = newNotifications.some(
+          (n) => n.id === "balance-yellow",
+        );
+
+        console.log("Estado dos alertas:", { hasRedAlert, hasOrangeAlert, hasYellowAlert });
+
+        if (hasRedAlert) {
+          bellIcon.style.color = "rgb(239, 68, 68)"; // Vermelho
+        } else if (hasOrangeAlert) {
+          bellIcon.style.color = "rgb(249, 115, 22)"; // Laranja
+        } else if (hasYellowAlert) {
+          bellIcon.style.color = "rgb(234, 179, 8)"; // Amarelo
+        }
+      } else {
+        bellIcon.style.color = "";
+      }
+    }
+  }, [balance]);
+
+  React.useEffect(() => {
+    // Verificar alertas imediatamente e quando o saldo mudar
+    checkAlerts();
+  }, [checkAlerts, balance]);
+
+  React.useEffect(() => {
+    // Verificar alertas a cada minuto
+    const interval = setInterval(checkAlerts, 60000);
+    
+    // Adicionar listener para mudanças no localStorage
+    const handleStorageChange = (e: StorageEvent | CustomEvent) => {
+      if (e instanceof StorageEvent) {
+        if (e.key === "transactions" || e.key === "alertSettings" || e.key === "balance") {
+          checkAlerts();
+        }
+      } else {
+        checkAlerts();
+      }
     };
 
-    checkAlerts();
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("updateAlerts", handleStorageChange);
 
-    // Set up interval to check alerts every minute
-    const interval = setInterval(checkAlerts, 60000);
-    return () => clearInterval(interval);
-  }, [currentBalance]);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("updateAlerts", handleStorageChange);
+    };
+  }, [checkAlerts]);
 
   return (
     <Card className="w-full h-20 bg-white border-b border-[#C9DDEE] flex items-center justify-between px-6">
@@ -139,7 +168,7 @@ const DashboardHeader = ({
         <div className="flex flex-col">
           <span className="text-sm text-[#47A1C4]">Saldo Total</span>
           <span className="text-2xl font-semibold text-[#27568B]">
-            € {currentBalance.toLocaleString()}
+            € {balance.toLocaleString()}
           </span>
         </div>
 

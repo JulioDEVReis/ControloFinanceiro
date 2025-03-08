@@ -10,7 +10,6 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Label } from "./ui/label";
-import { PlusCircle } from "lucide-react";
 
 interface IncomeManagerProps {
   onIncomeAdd?: (data: {
@@ -61,14 +60,14 @@ const IncomeManager = ({
   };
 
   return (
-    <Card className="w-[400px] p-6 bg-white">
+    <Card className="w-full p-6 bg-white">
       <h2 className="text-xl font-semibold mb-4 text-[#27568B]">Adicionar Receita</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="income-type">Tipo de Receita</Label>
+            <Label htmlFor="income-type" className="text-[#27568B]">Tipo de Receita</Label>
             <Select value={type} onValueChange={setType}>
-              <SelectTrigger id="income-type">
+              <SelectTrigger id="income-type" className="bg-[#C9DDEE]/10 border-[#C9DDEE] text-[#27568B] focus:border-[#47A1C4]">
                 <SelectValue placeholder="Selecione o tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -80,7 +79,7 @@ const IncomeManager = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="amount">Valor</Label>
+            <Label htmlFor="amount" className="text-[#27568B]">Valor</Label>
             <Input
               id="amount"
               type="number"
@@ -89,17 +88,19 @@ const IncomeManager = ({
               onChange={(e) => setAmount(e.target.value)}
               step="0.01"
               min="0"
+              className="bg-[#C9DDEE]/10 border-[#C9DDEE] text-[#27568B] focus:border-[#47A1C4]"
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Descrição</Label>
+          <Label htmlFor="description" className="text-[#27568B]">Descrição</Label>
           <Input
             id="description"
             placeholder="Adicione uma descrição"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            className="bg-[#C9DDEE]/10 border-[#C9DDEE] text-[#27568B] focus:border-[#47A1C4]"
           />
         </div>
 

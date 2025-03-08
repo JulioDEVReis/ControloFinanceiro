@@ -57,28 +57,6 @@ const QuickAddExpense = ({
     e.preventDefault();
     if (!amount) return;
 
-    const existingTransactions = JSON.parse(
-      localStorage.getItem("transactions") || "[]",
-    );
-    const currentBalance = parseFloat(localStorage.getItem("balance") || "0");
-
-    const newTransaction = {
-      id: Math.random().toString(36).substr(2, 9),
-      date,
-      amount: -parseFloat(amount), // Negative for expenses
-      category,
-      description,
-      type: "expense",
-      isEssential,
-    };
-
-    const newTransactions = [...existingTransactions, newTransaction];
-    const newBalance = currentBalance - parseFloat(amount);
-
-    // Update localStorage
-    localStorage.setItem("transactions", JSON.stringify(newTransactions));
-    localStorage.setItem("balance", newBalance.toString());
-
     onSubmit({
       date,
       amount: parseFloat(amount),
@@ -96,17 +74,17 @@ const QuickAddExpense = ({
   if (!isOpen) return null;
 
   return (
-    <Card className="w-[400px] p-6 bg-white">
+    <Card className="w-full p-6 bg-white">
       <h2 className="text-xl font-semibold mb-4 text-[#27568B]">Adicionar Despesa</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="date">Data</Label>
+          <Label htmlFor="date" className="text-[#27568B]">Data</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal",
+                  "w-full justify-start text-left font-normal bg-[#C9DDEE]/10 border-[#C9DDEE] text-[#27568B] hover:bg-[#C9DDEE]/20",
                   !date && "text-muted-foreground",
                 )}
               >
@@ -126,7 +104,7 @@ const QuickAddExpense = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="amount">Valor (€)</Label>
+          <Label htmlFor="amount" className="text-[#27568B]">Valor (€)</Label>
           <Input
             id="amount"
             type="number"
@@ -136,13 +114,14 @@ const QuickAddExpense = ({
             step="0.01"
             min="0"
             required
+            className="bg-[#C9DDEE]/10 border-[#C9DDEE] text-[#27568B] focus:border-[#47A1C4]"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="category">Categoria</Label>
+          <Label htmlFor="category" className="text-[#27568B]">Categoria</Label>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger>
+            <SelectTrigger className="bg-[#C9DDEE]/10 border-[#C9DDEE] text-[#27568B] focus:border-[#47A1C4]">
               <SelectValue placeholder="Selecione uma categoria" />
             </SelectTrigger>
             <SelectContent>
@@ -156,12 +135,13 @@ const QuickAddExpense = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Descrição</Label>
+          <Label htmlFor="description" className="text-[#27568B]">Descrição</Label>
           <Input
             id="description"
             placeholder="Digite uma descrição"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            className="bg-[#C9DDEE]/10 border-[#C9DDEE] text-[#27568B] focus:border-[#47A1C4]"
           />
         </div>
 
@@ -190,3 +170,4 @@ const QuickAddExpense = ({
 };
 
 export default QuickAddExpense;
+

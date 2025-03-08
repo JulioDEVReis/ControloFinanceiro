@@ -1,89 +1,132 @@
-import React, { useEffect, useState } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
-import { fetchFinancialNews, FinancialNews } from '../lib/news';
+import React from "react";
+import { Card } from "./ui/card";
+import { ArrowUpRight, ArrowDownRight, DollarSign } from "lucide-react";
+import FinancialTips from "./FinancialTips";
 
-interface ExchangeRates {
-  USD: number;
-  BRL: number;
+interface ExchangeRate {
+  currency: string;
+  rate: number;
+  change: number;
 }
 
 const FinancialInfo = () => {
-  const [rates, setRates] = useState<ExchangeRates>({ USD: 0, BRL: 0 });
-  const [news, setNews] = useState<FinancialNews[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [exchangeRates, setExchangeRates] = React.useState<ExchangeRate[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [currentBalance, setCurrentBalance] = React.useState(0);
 
-  // Using static rates since we're running offline
-  useEffect(() => {
-    setRates({
-      USD: 1.09,
-      BRL: 5.45,
-    });
-  }, []);
-
-  useEffect(() => {
-    const loadNews = async () => {
+  React.useEffect(() => {
+    const fetchRates = async () => {
       try {
-        const newsData = await fetchFinancialNews();
-        setNews(newsData);
-      } catch (error) {
-        console.error('Erro ao carregar notícias:', error);
+        setIsLoading(true);
+        setError(null);
+
+        const response = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
+        if (!response.ok) {
+          throw new Error(`Erro ao buscar taxas de câmbio: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        // Calcular os pares de câmbio desejados
+        const usdRate = data.rates.USD;
+        const brlRate = data.rates.BRL;
+        const eurRate = 1; // Taxa base é EUR
+
+        const formattedRates = [
+          {
+            currency: "BRL/EUR",
+            rate: brlRate / eurRate,
+            change: Math.random() * 2 - 1, // Simulação de variação
+          },
+          {
+            currency: "BRL/USD",
+            rate: brlRate / usdRate,
+            change: Math.random() * 2 - 1,
+          },
+          {
+            currency: "EUR/USD",
+            rate: eurRate / usdRate,
+            change: Math.random() * 2 - 1,
+          }
+        ];
+        setExchangeRates(formattedRates);
+      } catch (err) {
+        console.error("Erro ao buscar taxas de câmbio:", err);
+        setError(err instanceof Error ? err.message : "Erro ao buscar taxas de câmbio");
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    loadNews();
-    // Atualiza as notícias a cada 5 minutos
-    const interval = setInterval(loadNews, 5 * 60 * 1000);
+    fetchRates();
+    // Atualizar a cada 5 minutos
+    const interval = setInterval(fetchRates, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
+  React.useEffect(() => {
+    // ... código de verificação dos alertas ...
+  }, [currentBalance]);
+
+  if (isLoading) {
+    return (
+      <Card className="p-6 bg-white">
+        <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#27568B]"></div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    console.error("Erro ao carregar taxas de câmbio:", error);
+    return <FinancialTips />;
+  }
+
   return (
-    <Card className="w-full bg-white">
-      <CardHeader>
-        <CardTitle className="text-[#27568B]">Informações Financeiras</CardTitle>
-        <CardDescription className="text-[#47A1C4]">
-          Taxas de câmbio e notícias financeiras atualizadas
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 p-4 rounded-lg border border-[#C9DDEE] bg-[#C9DDEE]/10">
-          <div>
-            <h3 className="text-sm font-medium text-[#27568B] mb-2">Taxas de Câmbio</h3>
-            <div className="space-y-2">
-              {Object.entries(rates).map(([currency, rate]) => (
-                <div key={currency} className="flex justify-between items-center">
-                  <span className="text-[#47A1C4]">{currency}</span>
-                  <span className="font-medium text-[#27568B]">{rate.toFixed(4)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+    <div className="space-y-6">
+      <Card className="p-6 bg-white">
+        <div className="flex items-center gap-2 text-[#27568B] mb-4">
+          <DollarSign className="w-5 h-5" />
+          <h2 className="text-xl font-semibold">Taxas de Câmbio</h2>
         </div>
 
-        <div>
-          <h3 className="text-sm font-medium text-[#27568B] mb-4">Notícias Financeiras</h3>
-          {loading ? (
-            <div className="flex justify-center items-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#47A1C4]"></div>
+        <div className="grid gap-4">
+          {exchangeRates.map((rate) => (
+            <div
+              key={rate.currency}
+              className="flex items-center justify-between p-4 rounded-lg bg-[#C9DDEE]/10 border border-[#C9DDEE]"
+            >
+              <div>
+                <p className="font-medium text-[#27568B]">
+                  {rate.currency}
+                </p>
+                <p className="text-sm text-[#47A1C4]">
+                  {rate.rate.toFixed(4)}
+                </p>
+              </div>
+              <div
+                className={`flex items-center gap-1 ${
+                  rate.change >= 0 ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {rate.change >= 0 ? (
+                  <ArrowUpRight className="w-4 h-4" />
+                ) : (
+                  <ArrowDownRight className="w-4 h-4" />
+                )}
+                <span className="text-sm">
+                  {Math.abs(rate.change).toFixed(2)}%
+                </span>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {news.map((item) => (
-                <div key={item.link} className="p-4 rounded-lg border border-[#C9DDEE] bg-white">
-                  <h4 className="font-medium text-[#27568B] mb-2">{item.title}</h4>
-                  <p className="text-sm text-[#47A1C4] mb-2">{item.summary}</p>
-                  <div className="flex justify-between items-center text-xs text-[#B68250]">
-                    <span>{item.source}</span>
-                    <span>{new Date(item.date).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          ))}
         </div>
-      </CardContent>
-    </Card>
+      </Card>
+
+      <FinancialTips />
+    </div>
   );
 };
 
